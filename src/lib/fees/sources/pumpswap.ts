@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import { getAccountData, getTokenBalance } from "@/lib/platforms/rpc";
 import { getAllSignatures, batchParseTransactions, intersectSignatures } from "../helius";
-import type { FeeSource } from "../types";
+import type { FeeSource, FeeClaimResult } from "../types";
 import type { FeeClaimRecord } from "@/types/token";
 
 const PUMP_PROGRAM   = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
@@ -81,10 +81,10 @@ async function getPoolCoinCreator(
   }
 }
 
-async function getFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
+async function getFeeClaims(mint: string): Promise<FeeClaimResult> {
   const result = await getPoolCoinCreator(mint);
   console.log(`[pumpswap] mint=${mint.slice(0,8)} poolResult=`, result ? { poolPda: result.poolPda.slice(0,8), coinCreator: result.coinCreator.toBase58().slice(0,8) } : null);
-  if (!result) return [];
+  if (!result) return { claims: [], truncated: false };
 
   const { poolPda, coinCreator } = result;
 
@@ -118,15 +118,16 @@ async function getFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
   const creatorStr = coinCreator.toString();
   console.log(`[pumpswap] fetching signatures for creator=${creatorStr.slice(0,8)} and vault=${vaultAtaStr.slice(0,8)}`);
 
-  const [creatorSigs, vaultSigs] = await Promise.all([
+  const [creatorResult, vaultResult] = await Promise.all([
     getAllSignatures(creatorStr),
     getAllSignatures(vaultAtaStr),
   ]);
 
-  const claimSigs = intersectSignatures(creatorSigs, vaultSigs);
-  console.log(`[pumpswap] creator=${creatorSigs.length} vault=${vaultSigs.length} intersection=${claimSigs.length}`);
+  const claimSigs = intersectSignatures(creatorResult.signatures, vaultResult.signatures);
+  const truncated = creatorResult.truncated || vaultResult.truncated;
+  console.log(`[pumpswap] creator=${creatorResult.signatures.length} vault=${vaultResult.signatures.length} intersection=${claimSigs.length} truncated=${truncated}`);
 
-  if (!claimSigs.length) return [];
+  if (!claimSigs.length) return { claims: [], truncated };
 
   const txns = await batchParseTransactions(claimSigs);
   const claims: FeeClaimRecord[] = [];
@@ -165,7 +166,7 @@ async function getFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
     });
   }
 
-  return claims;
+  return { claims, truncated };
 }
 
 function deriveVaultAddresses(coinCreator: PublicKey): { vaultAuthority: PublicKey; vaultAta: PublicKey } {

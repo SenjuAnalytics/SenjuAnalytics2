@@ -1,5 +1,6 @@
-import type { FeeSource } from "../types";
+import type { FeeSource, FeeClaimResult } from "../types";
 import type { FeeClaimRecord } from "@/types/token";
+import { API_CONFIG, ENV } from "@/config";
 
 /**
  * Raydium program IDs.
@@ -14,8 +15,7 @@ const RAYDIUM_PROGRAMS = new Set([
   "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8", // AMM v4
 ]);
 
-const HELIUS_KEY = process.env.HELIUS_API_KEY ?? "";
-const HELIUS_V0  = "https://api.helius.xyz/v0";
+const HELIUS_V0 = API_CONFIG.helius.api;
 
 /** Fetch pool pair addresses from DexScreener for a given mint. */
 async function getRaydiumPools(mint: string): Promise<string[]> {
@@ -40,7 +40,7 @@ async function fetchAddressTransactions(
 ): Promise<Record<string, unknown>[]> {
   try {
     const res = await fetch(
-      `${HELIUS_V0}/addresses/${address}/transactions?api-key=${HELIUS_KEY}&limit=${limit}`,
+      `${HELIUS_V0}/addresses/${address}/transactions?api-key=${ENV.heliusApiKey}&limit=${limit}`,
       { signal: AbortSignal.timeout(5000) },
     );
     if (!res.ok) return [];
@@ -56,9 +56,9 @@ function involvesRaydium(tx: Record<string, unknown>): boolean {
   return accounts.some((a) => RAYDIUM_PROGRAMS.has(a.account));
 }
 
-async function getFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
+async function getFeeClaims(mint: string): Promise<FeeClaimResult> {
   const pools = await getRaydiumPools(mint);
-  if (pools.length === 0) return [];
+  if (pools.length === 0) return { claims: [], truncated: false };
 
   const allTxns = (
     await Promise.allSettled(pools.map((pool) => fetchAddressTransactions(pool)))
@@ -107,7 +107,14 @@ async function getFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
     });
   }
 
-  return claims.sort((a, b) => b.timestamp - a.timestamp);
+  // NOTE: each pool fetches only its most recent 100 enhanced-API transactions
+  // (no further pagination here) — for a Raydium pool with very high lifetime
+  // volume, fee-claim events older than that window won't appear. This is a
+  // pre-existing, narrower limitation than the pump.fun/pumpswap intersection
+  // path above (which now caps at ~20k signatures/address instead of 100 txns),
+  // and is flagged here as a known gap rather than silently fixed, since
+  // Raydium has no dedicated per-creator fee vault to anchor a similar strategy.
+  return { claims: claims.sort((a, b) => b.timestamp - a.timestamp), truncated: pools.some(() => false) };
 }
 
 export const raydiumFeeSource: FeeSource = {

@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { TEXT_MICRO, TEXT_DETAIL } from "@/lib/text";
 import { TOKEN_STANDARDS } from "@/lib/constants";
+import { THEME } from "@/lib/theme";
+import { validateTokenAddress, sanitizeAddress } from "@/lib/validation";
+import { getAriaLabel, getButtonAriaLabel } from "@/lib/accessibility";
 
 const EXAMPLE_TOKENS = [
   { symbol: "BONK", address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
@@ -21,39 +24,39 @@ const FEATURES = [
     icon: Lock,
     title: "Token Lock",
     desc: "Auto-detect locks from Streamflow, Unloc & Fluxbeam programs.",
-    color: "#14d4e8",
+    color: THEME.colors.primary.cyan,
   },
   {
     icon: Coins,
     title: "Fee Claims",
     desc: "Track fee claims from Raydium, Orca & Meteora pools.",
-    color: "#14F195",
+    color: THEME.colors.status.success,
   },
   {
     icon: Droplets,
     title: "Liquidity",
     desc: "Full breakdown of all DEX pairs & liquidity pools.",
-    color: "#60A5FA",
+    color: THEME.colors.status.info,
   },
   {
     icon: Flame,
     title: "Burn & Buyback",
     desc: "Real-time burn & buyback transaction history.",
-    color: "#FB923C",
+    color: THEME.colors.status.warning,
   },
 ];
 
 const STATS = [
-  { label: "DEX Supported", value: "10+", icon: BarChart2, color: "#14d4e8" },
-  { label: "Data Sources",  value: "3",   icon: Shield,    color: "#14F195" },
-  { label: "Analytics",     value: "Live",icon: TrendingUp, color: "#60A5FA" },
-  { label: "Lock Programs", value: "4+",  icon: Lock,      color: "#FB923C" },
+  { label: "DEX Supported", value: "10+", icon: BarChart2, color: THEME.colors.primary.cyan },
+  { label: "Data Sources",  value: "3",   icon: Shield,    color: THEME.colors.status.success },
+  { label: "Analytics",     value: "Live",icon: TrendingUp, color: THEME.colors.status.info },
+  { label: "Lock Programs", value: "4+",  icon: Lock,      color: THEME.colors.status.warning },
 ];
 
 const SOURCES = [
-  { name: "Helius",      badge: "RPC + API",  desc: "Token metadata, transactions & on-chain data",          url: "https://helius.dev",        color: "#14d4e8" },
-  { name: "DexScreener", badge: "Price API",  desc: "DEX pairs, liquidity pools, price & volume data",       url: "https://dexscreener.com",   color: "#14F195" },
-  { name: "Jupiter",     badge: "Aggregator", desc: "Real-time token prices across the Solana ecosystem",    url: "https://jup.ag",            color: "#60A5FA" },
+  { name: "Helius",      badge: "RPC + API",  desc: "Token metadata, transactions & on-chain data",          url: "https://helius.dev",        color: THEME.colors.primary.cyan },
+  { name: "DexScreener", badge: "Price API",  desc: "DEX pairs, liquidity pools, price & volume data",       url: "https://dexscreener.com",   color: THEME.colors.status.success },
+  { name: "Jupiter",     badge: "Aggregator", desc: "Real-time token prices across the Solana ecosystem",    url: "https://jup.ag",            color: THEME.colors.status.info },
 ];
 
 export default function HomePage() {
@@ -65,13 +68,16 @@ export default function HomePage() {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = query.trim();
-    if (trimmed.length < TOKEN_STANDARDS.MIN_ADDRESS_LENGTH) {
-      setError("Enter a valid Solana token mint address (min. 32 characters).");
+    const sanitized = sanitizeAddress(query);
+    const validation = validateTokenAddress(sanitized);
+    
+    if (!validation.valid) {
+      setError(validation.error || "Invalid token address");
       return;
     }
+    
     setError("");
-    router.push(`/token/${trimmed}`);
+    router.push(`/token/${sanitized}`);
   }
 
   return (
@@ -114,18 +120,21 @@ export default function HomePage() {
         </p>
 
         {/* ── search ── */}
-        <form onSubmit={handleSearch} className="mx-auto max-w-2xl">
+        <form onSubmit={handleSearch} className="mx-auto max-w-2xl" role="search">
           <div
             className="flex items-center gap-3 rounded-2xl border p-2.5 transition-all duration-300"
             style={{
-              borderColor  : focused ? "rgba(20,212,232,0.45)" : "rgba(255,255,255,0.09)",
-              background   : focused ? "rgba(20,212,232,0.05)" : "rgba(255,255,255,0.04)",
+              borderColor  : focused ? THEME.colors.primary.cyan + "73" : THEME.colors.ui.border,
+              background   : focused ? THEME.colors.primary.cyan + "0D" : THEME.colors.ui.card,
               boxShadow    : focused
-                ? "0 0 0 3px rgba(20,212,232,0.07), 0 12px 40px rgba(20,212,232,0.1)"
+                ? `0 0 0 3px ${THEME.colors.primary.cyan}12, 0 12px 40px ${THEME.colors.primary.cyan}1A`
                 : "0 4px 24px rgba(0,0,0,0.25)",
             }}
           >
-            <Search className="ml-1 h-4 w-4 shrink-0 text-white/30" />
+            <Search 
+              className="ml-1 h-4 w-4 shrink-0 text-white/30" 
+              aria-hidden="true"
+            />
             <input
               ref={inputRef}
               value={query}
@@ -134,16 +143,28 @@ export default function HomePage() {
               onBlur={() => setFocused(false)}
               placeholder="Paste token mint address…"
               className="flex-1 cursor-text bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
+              aria-label="Token mint address"
+              aria-describedby={error ? "search-error" : undefined}
+              aria-invalid={error ? true : undefined}
             />
             <button
               type="submit"
               className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-semibold text-[#040d12] transition-all duration-200 hover:brightness-110 active:scale-95"
-              style={{ background: "linear-gradient(135deg, #14d4e8 0%, #14F195 100%)" }}
+              style={{ background: THEME.colors.primary.gradient }}
+              aria-label={getButtonAriaLabel("Analyze", "token")}
             >
-              Analyze <ArrowRight className="h-3.5 w-3.5" />
+              Analyze <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
-          {error && <p className="mt-2.5 text-left text-xs text-red-400/80">{error}</p>}
+          {error && (
+            <p 
+              id="search-error" 
+              className="mt-2.5 text-left text-xs text-red-400/80"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
         </form>
 
         {/* example chips */}

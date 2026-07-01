@@ -1,5 +1,6 @@
 /**
  * Application-wide constants
+ * Organized by category for easy maintenance
  */
 
 // ── Solana Addresses ──────────────────────────────────────────
@@ -8,6 +9,20 @@ export const SOLANA_ADDRESSES = {
   BURN: "1nc1nerator11111111111111111111111111111111",
   /** Null/system address */
   NULL: "11111111111111111111111111111111",
+} as const;
+
+// ── Bonding Curve Constants ───────────────────────────────────
+export const BONDING_CURVE = {
+  /** Byte offset: bonding curve completion status (bool) */
+  OFFSET_COMPLETE: 48,
+  /** Byte offset: creator address (Pubkey, 32 bytes) */
+  OFFSET_CREATOR: 49,
+  /** Byte offset: mayhem mode flag (bool) - added Nov 2025 */
+  OFFSET_MAYHEM: 81,
+  /** Byte offset: cashback enabled flag (bool) - added Feb 2026 */
+  OFFSET_CASHBACK: 82,
+  /** Minimum account data length for valid bonding curve */
+  MIN_LENGTH: 83,
 } as const;
 
 // ── Token Standards ───────────────────────────────────────────
@@ -82,3 +97,18 @@ export const UI = {
   /** Skeleton loading items count */
   SKELETON_ITEMS: 5,
 } as const;
+
+// ── Text Size Classes ─────────────────────────────────────────
+// Change sizes here → all components update automatically.
+// Never hardcode pixel-based sizes (text-[10px]) in component files.
+export const TEXT = {
+  /** Smallest UI text — badges, status pills, sub-timestamps */
+  MICRO: "text-xs",
+  /** Detail / secondary text — descriptions, labels, table sub-text */
+  DETAIL: "text-[13px]",
+} as const;
+
+/** Convenience alias — same as TEXT.MICRO */
+export const TEXT_MICRO = TEXT.MICRO;
+/** Convenience alias — same as TEXT.DETAIL */
+export const TEXT_DETAIL = TEXT.DETAIL;

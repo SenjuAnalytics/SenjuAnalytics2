@@ -1,5 +1,5 @@
 import type { FeeClaimRecord } from "@/types/token";
-import type { FeeSource } from "./types";
+import type { FeeSource, FeeClaimResult } from "./types";
 import { pumpswapFeeSource } from "./sources/pumpswap";
 import { pumpfunFeeSource } from "./sources/pumpfun";
 import { raydiumFeeSource } from "./sources/raydium";
@@ -24,29 +24,49 @@ const SOURCES: FeeSource[] = [
   raydiumFeeSource,
 ];
 
+export interface AllFeeClaimsResult {
+  claims: FeeClaimRecord[];
+  /**
+   * True if at least one source hit the signature-page cap
+   * (lib/fees/helius.ts MAX_SIGNATURE_PAGES) and may have older
+   * fee-claim history not reflected in this result set.
+   * The UI should surface a notice like "Showing most recent history only".
+   */
+  truncated: boolean;
+}
+
 /**
  * Fetch fee claim records from all registered sources in parallel.
  * Results are merged and sorted newest-first.
- * A failed source is silently skipped.
+ * A failed source is silently skipped (partial results are still returned).
  */
-export async function getAllFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
+export async function getAllFeeClaims(mint: string): Promise<AllFeeClaimsResult> {
   const results = await Promise.allSettled(
     SOURCES.map((s) => s.getFeeClaims(mint)),
   );
 
-  const all = results
-    .filter((r): r is PromiseFulfilledResult<FeeClaimRecord[]> => r.status === "fulfilled")
-    .flatMap((r) => r.value)
-    .sort((a, b) => b.timestamp - a.timestamp);
+  let truncated = false;
+  const allClaims: FeeClaimRecord[] = [];
+
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      allClaims.push(...r.value.claims);
+      if (r.value.truncated) truncated = true;
+    }
+  }
+
+  allClaims.sort((a, b) => b.timestamp - a.timestamp);
 
   // Deduplicate by signature (multiple sources may detect the same tx)
   const seen = new Set<string>();
-  return all.filter((r) => {
+  const claims = allClaims.filter((r) => {
     if (seen.has(r.signature)) return false;
     seen.add(r.signature);
     return true;
   });
+
+  return { claims, truncated };
 }
 
 export { SOURCES };
-export type { FeeSource };
+export type { FeeSource, FeeClaimResult };

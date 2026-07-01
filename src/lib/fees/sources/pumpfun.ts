@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import { getAccountData, getLamportBalance } from "@/lib/platforms/rpc";
 import { getAllSignatures, batchParseTransactions, intersectSignatures } from "../helius";
-import type { FeeSource } from "../types";
+import type { FeeSource, FeeClaimResult } from "../types";
 import type { FeeClaimRecord } from "@/types/token";
 
 /**
@@ -54,9 +54,9 @@ function deriveCreatorVault(creator: PublicKey): PublicKey {
   return vault;
 }
 
-async function getFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
+async function getFeeClaims(mint: string): Promise<FeeClaimResult> {
   const result = await getBcCreator(mint);
-  if (!result) return [];
+  if (!result) return { claims: [], truncated: false };
 
   const { creator, bcPda } = result;
   const vault = deriveCreatorVault(creator);
@@ -71,16 +71,20 @@ async function getFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
    * collectCreatorFee is signed by creator AND touches the vault.
    * Swaps deposit to vault but are signed by swapper (not creator).
    * So intersection = fee claim txns only.
+   *
+   * Both fetches are capped (see lib/fees/helius.ts MAX_SIGNATURE_PAGES) and run
+   * in parallel, so wall-clock time is bounded even for very old/high-volume tokens.
    */
-  const [creatorSigs, vaultSigs] = await Promise.all([
+  const [creatorResult, vaultResult] = await Promise.all([
     getAllSignatures(creatorStr),
     getAllSignatures(vaultStr),
   ]);
 
-  const claimSigs = intersectSignatures(creatorSigs, vaultSigs);
-  console.log(`[pumpfun] creator=${creatorSigs.length} vault=${vaultSigs.length} intersection=${claimSigs.length}`);
+  const claimSigs = intersectSignatures(creatorResult.signatures, vaultResult.signatures);
+  const truncated = creatorResult.truncated || vaultResult.truncated;
+  console.log(`[pumpfun] creator=${creatorResult.signatures.length} vault=${vaultResult.signatures.length} intersection=${claimSigs.length} truncated=${truncated}`);
 
-  if (!claimSigs.length) return [];
+  if (!claimSigs.length) return { claims: [], truncated };
 
   const txns = await batchParseTransactions(claimSigs);
   const claims: FeeClaimRecord[] = [];
@@ -105,7 +109,7 @@ async function getFeeClaims(mint: string): Promise<FeeClaimRecord[]> {
     });
   }
 
-  return claims;
+  return { claims, truncated };
 }
 
 /** Unclaimed native SOL balance in the bonding curve creator vault. */

@@ -1,18 +1,28 @@
-import { getTokenInfo, getTokenPairs } from "@/lib/api";
+import * as tokenService from "@/services/token.service";
 import { detectLaunchPlatform } from "@/lib/platforms";
 import { getBondingCurveInfo, getPumpSwapPrice } from "@/lib/platforms/pumpfun";
 import { getSolPriceUsd } from "@/lib/platforms/rpc";
 import { logError } from "@/lib/error-logger";
+import { validateTokenAddress } from "@/lib/validation";
 import type { NextRequest } from "next/server";
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ address: string }> }) {
   const { address } = await ctx.params;
 
+  // Validate input
+  const validation = validateTokenAddress(address);
+  if (!validation.valid) {
+    return Response.json(
+      { error: validation.error },
+      { status: 400 }
+    );
+  }
+
   try {
     const [tokenInfo, pairs, solPriceResult] = await Promise.allSettled([
-      getTokenInfo(address),
-      getTokenPairs(address),
-      getSolPriceUsd(),
+      tokenService.getTokenInfo(address),
+      tokenService.getTokenPairs(address),
+      tokenService.getSolPrice(),
     ]);
 
     const solPrice = solPriceResult.status === "fulfilled" ? solPriceResult.value : 0;

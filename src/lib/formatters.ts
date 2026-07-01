@@ -104,18 +104,4 @@ export function formatTimeDistance(timestamp: number): string {
   return `${prefix}${years} year${years !== 1 ? "s" : ""}${suffix}`;
 }
 
-export function formatUnlockDate(timestamp: number): string {
-  if (!timestamp) return "TBD";
-  const ms = timestamp > TIME.TIMESTAMP_THRESHOLD ? timestamp : timestamp * TIME.SECOND;
-  const now = Date.now();
-  if (ms < now) return "Unlocked";
-  const diff = ms - now;
-  const days = Math.floor(diff / TIME.DAY);
-  if (days === 0) return "Today";
-  if (days === 1) return "Tomorrow";
-  if (days < 30) return `${days} days`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} months`;
-  const years = Math.floor(months / 12);
-  return `${years} year${years > 1 ? "s" : ""}`;
-}
+

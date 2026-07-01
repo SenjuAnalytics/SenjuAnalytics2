@@ -22,7 +22,7 @@ export default function TokenPage({ params }: { params: Promise<{ address: strin
   const [activeTab, setActiveTab] = useState("overview");
 
   const { isPending, refetch, isRefetching, token, pairs } = useTokenPage(address);
-  const bestPair = pairs.sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
+  const bestPair = [...pairs].sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0))[0];
   const priceChange = token?.priceChange24h ?? bestPair?.priceChange?.h24;
 
   return (

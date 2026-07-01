@@ -9,8 +9,8 @@ const ATA_PROGRAM    = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8k
 const TOKEN_PROG     = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const DEFAULT_PUBKEY = "11111111111111111111111111111111";
 const COIN_CREATOR_OFFSET = 211;
-const HELIUS_KEY = process.env.HELIUS_API_KEY ?? "";
-const HELIUS_V0  = "https://api.helius.xyz/v0";
+const HELIUS_KEY = process.env.HELIUS_API_KEY ?? ""; // debug-only, not for production routes
+const HELIUS_V0  = "https://api.helius.xyz/v0";    // debug-only, use API_CONFIG in production routes
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ address: string }> }) {
   const { address } = await ctx.params;

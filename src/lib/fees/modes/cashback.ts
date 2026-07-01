@@ -28,6 +28,7 @@
 
 import { PublicKey } from "@solana/web3.js";
 import { getAccountData, getLamportBalance, getTokenBalance } from "@/lib/platforms/rpc";
+import { API_CONFIG, ENV } from "@/config";
 import type { CashbackStats, CashbackDistributionRecord } from "./types";
 
 const PUMP_PROGRAM = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
@@ -42,8 +43,7 @@ const BC_CREATOR_OFF = 49;
 const BC_MIN_LEN     = 81;
 const DEFAULT_PUBKEY = "11111111111111111111111111111111";
 
-const HELIUS_KEY = process.env.HELIUS_API_KEY ?? "";
-const HELIUS_V0  = "https://api.helius.xyz/v0";
+const HELIUS_V0 = API_CONFIG.helius.api;
 
 // Known protocol fee recipients — NOT cashback
 const PROTOCOL_RECIPIENTS = new Set([
@@ -155,7 +155,7 @@ async function fetchTxns(address: string, maxPages = 5): Promise<Record<string, 
   for (let page = 0; page < maxPages; page++) {
     try {
       const url = new URL(`${HELIUS_V0}/addresses/${address}/transactions`);
-      url.searchParams.set("api-key", HELIUS_KEY);
+      url.searchParams.set("api-key", ENV.heliusApiKey);
       url.searchParams.set("limit", "100");
       if (before) url.searchParams.set("before", before);
 

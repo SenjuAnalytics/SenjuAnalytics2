@@ -1,6 +1,5 @@
-import { getFeeClaimRecords } from "@/lib/api";
-import { detectFeeMode, getCreatorVaultData, getAgentStats } from "@/lib/fees";
-import { getSolPriceUsd } from "@/lib/platforms/rpc";
+import { getAllFeeClaims, detectFeeMode, getCreatorVaultData, getAgentStats } from "@/lib/fees";
+import { getSolPrice } from "@/services/token.service";
 import { logError } from "@/lib/error-logger";
 import type { NextRequest } from "next/server";
 
@@ -8,18 +7,18 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ address: s
   const { address } = await ctx.params;
 
   try {
-    // Phase 1: mode detection + creator fee claims + vault data + SOL price
-    const [fees, modeResult, vaultData, solPrice] = await Promise.all([
-      getFeeClaimRecords(address),
+    const [feeResult, modeResult, vaultData, solPrice] = await Promise.all([
+      getAllFeeClaims(address),
       detectFeeMode(address),
       getCreatorVaultData(address),
-      getSolPriceUsd(),
+      getSolPrice(),
     ]);
 
-    const feeMode = modeResult?.mode ?? "creator";
+    const { claims: fees, truncated } = feeResult;
+    const feeMode  = modeResult?.mode ?? "creator";
     const modeInfo = modeResult?.info ?? null;
 
-    // Enrich fee claims with USD value
+    // Enrich with USD value if SOL price is available
     if (solPrice > 0) {
       for (const fee of fees) {
         if (!fee.usdValue) {
@@ -29,7 +28,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ address: s
       }
     }
 
-    // Phase 2: agent stats (only for agent mode)
     let agentStats = null;
     if (feeMode === "agent") {
       agentStats = await getAgentStats(address);
@@ -37,18 +35,18 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ address: s
 
     return Response.json({
       fees,
+      truncated,
       unclaimedSol: vaultData.unclaimedSol,
-      vaultInfo: vaultData.vaultInfo,
+      vaultInfo:    vaultData.vaultInfo,
       feeMode,
       modeInfo,
       agentStats,
     });
   } catch (error) {
     logError("Failed to fetch fee records", error, { address });
-    console.error(`[fees] error for ${address}:`, error);
     return Response.json(
       { error: error instanceof Error ? error.message : "Failed to fetch fee records" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

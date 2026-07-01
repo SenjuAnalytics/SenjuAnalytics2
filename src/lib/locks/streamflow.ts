@@ -49,8 +49,9 @@
 
 import { PublicKey } from "@solana/web3.js";
 import type { TokenLock } from "@/types/token";
+import { API_CONFIG } from "@/config";
 
-const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY ?? ""}`;
+const HELIUS_RPC = API_CONFIG.helius.rpc;
 
 export const STREAMFLOW_PROGRAM = "strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m";
 

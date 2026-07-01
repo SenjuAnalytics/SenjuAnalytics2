@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useQuery } from "@tanstack/react-query";
 import { Coins, DollarSign, Hash, Clock, Wallet, ArrowDownToLine, Layers, Gift, Flame, Bot, Percent, type LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +11,8 @@ import { StatCard } from "@/components/common/StatCard";
 import { formatNumber, formatUsd, formatRelativeTime, formatTimestamp } from "@/lib/formatters";
 import type { FeeClaimRecord } from "@/types/token";
 import { TEXT_MICRO } from "@/lib/text";
-import type { FeeModeInfo, AgentStats } from "@/lib/fees/modes/types";
+import type { FeeMode, FeeModeInfo, AgentStats } from "@/types/api";
+import { useFeeClaims } from "@/hooks/useTokenData";
 import { API_LIMITS, UI } from "@/lib/constants";
 import {
   AreaChart,
@@ -25,16 +25,7 @@ import {
 
 // ── Types ────────────────────────────────────────────────────
 
-type FeeMode = "creator" | "cashback" | "mayhem" | "agent";
-
-interface FeeApiResponse {
-  fees: FeeClaimRecord[];
-  unclaimedSol?: number;
-  vaultInfo?: { vaultAta: string; coinCreator: string; poolPda: string } | null;
-  feeMode?: FeeMode;
-  modeInfo?: FeeModeInfo | null;
-  agentStats?: AgentStats | null;
-}
+// FeeApiResponse removed — FeesResponse from @/types/api is used via useFeeClaims hook
 
 interface FeeClaimTabProps {
   address: string;
@@ -133,22 +124,16 @@ function ModeBanner({ modeInfo }: { modeInfo: FeeModeInfo }) {
 // ── Main component ───────────────────────────────────────────
 
 export function FeeClaimTab({ address, tokenDecimals = 9 }: FeeClaimTabProps) {
-  const { data, isPending } = useQuery({
-    queryKey: ["fees", address],
-    queryFn: async () => {
-      const res = await fetch(`/api/token/${address}/fees`);
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json() as Promise<FeeApiResponse>;
-    },
-  });
+  const { data, isPending } = useFeeClaims(address);
 
   const fees         = data?.fees || [];
   const unclaimedSol = data?.unclaimedSol ?? 0;
   const vaultInfo    = data?.vaultInfo ?? null;
   const feeMode      = data?.feeMode ?? "creator";
   const modeInfo     = data?.modeInfo ?? null;
-  const agentStats = data?.agentStats ?? null;
-  const isAgent    = feeMode === "agent";
+  const agentStats   = data?.agentStats ?? null;
+  const truncated    = data?.truncated ?? false;
+  const isAgent      = feeMode === "agent";
 
   const totalClaimed    = fees.reduce((sum, f) => sum + (f.amountSol ?? f.amount / Math.pow(10, tokenDecimals)), 0);
   const totalUsdClaimed = fees.reduce((sum, f) => sum + (f.usdValue || 0), 0);
@@ -177,7 +162,19 @@ export function FeeClaimTab({ address, tokenDecimals = 9 }: FeeClaimTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* ── Mode banner (for all modes) ── */}
+      {/* ── Truncated history notice ── */}
+      {truncated && !isPending && (
+        <div className="flex items-start gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/8 px-4 py-3">
+          <Clock className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-yellow-300">Showing most recent history only</p>
+            <p className="text-xs text-yellow-200/70 mt-0.5 leading-relaxed">
+              This token has extensive on-chain history. Fee claims shown here cover the most recent
+              20,000 transactions per address. Older claim records may not appear.
+            </p>
+          </div>
+        </div>
+      )}
       {modeInfo && (
         <ModeBanner modeInfo={modeInfo} />
       )}
@@ -619,7 +616,7 @@ export function FeeClaimTab({ address, tokenDecimals = 9 }: FeeClaimTabProps) {
               ))}
             </div>
           ) : fees.length === 0 ? (
-            <EmptyState feeMode={feeMode} />
+            <FeeEmptyState feeMode={feeMode} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -672,7 +669,7 @@ export function FeeClaimTab({ address, tokenDecimals = 9 }: FeeClaimTabProps) {
 
 // ── Empty state per mode ─────────────────────────────────────
 
-function EmptyState({ feeMode = "creator" }: { feeMode?: FeeMode }) {
+function FeeEmptyState({ feeMode = "creator" }: { feeMode?: FeeMode }) {
   const configs: Record<FeeMode, { icon: React.ElementType; color: string; title: string; description: string }> = {
     cashback: {
       icon: Gift,

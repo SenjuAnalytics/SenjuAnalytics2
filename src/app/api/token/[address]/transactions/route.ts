@@ -1,4 +1,4 @@
-import { getTokenTransactions } from "@/lib/api";
+import { getTokenTransactions } from "@/services/token.service";
 import type { NextRequest } from "next/server";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ address: string }> }) {
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ address: st
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : "Failed to fetch transactions" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

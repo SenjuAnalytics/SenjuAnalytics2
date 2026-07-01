@@ -1,4 +1,6 @@
-const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${process.env.HELIUS_API_KEY ?? ""}`;
+import { API_CONFIG } from "@/config";
+
+const HELIUS_RPC = API_CONFIG.helius.rpc;
 
 /**
  * Returns the token account balance in lamports (u64 as string → number).
