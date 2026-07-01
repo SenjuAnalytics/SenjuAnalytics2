@@ -11,7 +11,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.2-38bdf8?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-[Live Demo](#) • [Documentation](#features) • [Report Bug](https://github.com/yourusername/senju/issues)
+[Live Demo](#) • [Documentation](#features) • [Report Bug](https://github.com/SenjuAnalytics/SenjuAnalytics2/issues)
 
 </div>
 
@@ -132,8 +132,8 @@ Built with Next.js 16, TypeScript, and Tailwind CSS, Senju delivers a fast, resp
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/senju.git
-   cd senju
+   git clone https://github.com/SenjuAnalytics/SenjuAnalytics2.git
+   cd SenjuAnalytics2
    ```
 
 2. **Install dependencies**
@@ -397,9 +397,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 📞 Support
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/senju/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/senju/discussions)
-- **Twitter:** [@yourusername](https://twitter.com/yourusername)
+- **Issues:** [GitHub Issues](https://github.com/SenjuAnalytics/SenjuAnalytics2/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/SenjuAnalytics/SenjuAnalytics2/discussions)
 
 ---
 
